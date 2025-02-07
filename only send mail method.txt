@@ -1,0 +1,40 @@
+if($date <= $current_date)
+        {
+            return redirect('/roaster')->with('status',"This Employee is Unavailable For this Date"); 
+            return 'exist';
+        }
+        else
+        {
+            $roaster = new Roaster();
+            $roaster->emp_id = $request->emp_id;
+            $roaster->location_id = $request->location_id;
+            $roaster->shift_id = $request->shift_id;
+            $roaster->from_date = $request->start_date;
+            $roaster->to_date = $request->end_date;
+            $roaster->description = $request->description;
+            $roaster->save();
+            $check =  Roaster::where('id',$roaster->id)->with('employees','shifts','locations')->first();
+        if($roaster)
+        {
+            $employee = Employe::find($request->emp_id);
+            $email = $employee->employe_email;
+            $city = $check->locations->city;
+            $state = $check->locations->state;
+            $address = $check->locations->address;
+
+            $location = Location::find($check->locations->id);
+            // return $location;
+            // 
+            // $from = $check->shifts->start_time;
+            // $to = $check->shifts->end_time;
+            // $combine = $state .' state '. $city . ' city ' . $address . 'address' . $from . ' from '. $to .'to' ;
+            // return $combine;
+            // Mail::to($check->employees->employe_email)->send(new RoasterSetEmail($check->employees,$roaster,$check->locations));
+            Mail::to($check->employees->employe_email)->send(new RoasterSetEmail($roaster->from_date,$roaster->to_date,$location->state,$location->$city));
+            return redirect('/roaster')->with('status',"Roaster Saved Succcessfully"); 
+        }
+            else
+            {
+                return redirect('/roaster');
+            }
+        }

@@ -1,0 +1,122 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Mail\RoasterSetEmail;
+use App\Models\Employe;
+use App\Models\Location;
+use App\Models\Roaster;
+use App\Models\Shift;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+
+class RoasterController extends Controller
+{
+    public function add()
+    {
+        $employes = Employe::all();
+        $locations = Location::all();
+        $shifts = Shift::all();
+        return view('admin.roaster.add',compact('employes','locations','shifts'));
+    }
+
+    public function index()
+    {
+        $roasters = Roaster::with('employees','shifts','locations')->get();
+        return view('admin.roaster.index',compact('roasters'));
+    }
+
+    public function insert(Request $request)
+    {
+        $current_date = Carbon::now()->format('Y-m-d');
+        $check_roaster = Roaster::where('emp_id','=',$request->emp_id)->first();
+        $date = $check_roaster->to_date;
+
+
+        if($date <= $current_date)
+        {
+            return redirect('/roaster')->with('status',"This Employee is Unavailable For this Date"); 
+            return 'exist';
+        }
+        else
+        {
+            $roaster = new Roaster();
+            $roaster->emp_id = $request->emp_id;
+            $roaster->location_id = $request->location_id;
+            $roaster->shift_id = $request->shift_id;
+            $roaster->from_date = $request->start_date;
+            $roaster->to_date = $request->end_date;
+            $roaster->description = $request->description;
+            $roaster->save();
+            $check =  Roaster::where('id',$roaster->id)->with('employees','shifts','locations')->first();
+            // return $check;
+            // return $roaster->with(['locations','shifts','employees']);
+        if($roaster)
+        {
+            // $employee = Employe::find($request->emp_id);
+            // $email = $employee->employe_email;
+            // Mail::to($check->employees->employe_email)->send(new RoasterSetEmail($check->employees,$roaster,$check->locations));
+            Mail::to($check->employees->employe_email)->send(new RoasterSetEmail($roaster->from_date,$roaster->to_date,$check->locations->address));
+            return redirect('/roaster')->with('status',"Roaster Saved Succcessfully"); 
+        }
+            else
+            {
+                return redirect('/roaster');
+            }
+        }
+
+        // if($check_roaster->to_date->format('Y-m-d') <= $current_date->format('Y-m-d'))
+        // {
+        //     // return redirect('/roaster')->with('status',"This Employee is Unavailable For this Date"); 
+        //     return 'exist';
+        // }
+        // else
+        // {
+        //     return 'not exist';
+        // }
+        
+    }
+    public function delete($id){
+        $roaster = Roaster::find($id);
+        $roaster->delete();
+        return redirect('/roaster')->with('status',"Roaster Deleted Succcessfully"); 
+    }
+
+    public function update(Request $request,$id)
+    {
+        $roaster = Roaster::find($id);
+        $roaster->emp_id = $request->emp_id;
+        $roaster->location_id = $request->location_id;
+        $roaster->shift_id = $request->shift_id;
+        $roaster->from_date = $request->start_date;
+        $roaster->to_date = $request->end_date;
+        $roaster->description = $request->description;
+        $roaster->update();
+        if($roaster)
+        {
+            return redirect('/roaster')->with('status',"Roaster Updated Succcessfully"); 
+        }
+        else
+        {
+            return redirect('/roaster');
+        }
+    }
+
+    public function show($id)
+    {
+        // return 'abc';
+        $roasters = Roaster::where('id',$id)->with('employees','shifts','locations')->first();
+        return view('admin.roaster.show',compact('roasters')); 
+    }
+    public function edit($id)
+    {
+        // $roaster = Roaster::find($id);
+        $roaster = Roaster::where('id',$id)->with('employees','shifts','locations')->first();
+        $employes = Employe::all();
+        $locations = Location::all();
+        $shifts = Shift::all();
+        return view('admin.roaster.edit',compact('roaster','employes','locations','shifts'));
+    }
+
+}
